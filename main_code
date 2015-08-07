@@ -1,0 +1,338 @@
+#include<stdio.h>
+#include<fstream>
+#include<string.h>
+#include<set>
+#include<cstdlib>
+using namespace std;
+int sud[100][100],m,n,flag;
+int count[101][100][3]={0};
+int loc1[101][100][3];
+int loc2[101][100][3];
+int vis[101][100][3]={0};
+//set<int>::iterator v ;
+set<int> s[100][100];
+void assign(int,int,int,int);
+void remove(int,int,int,int);
+int back(int,int);
+void row_check(int i1,int j1,int row,int col);
+void column_check(int i1,int j1,int row,int col);
+void grid_check(int i1,int j1,int row,int col);
+void printresult(int [][100]);
+/////////////MAIN//////////////////
+
+int main()
+{
+    FILE *fp1;
+    int size,i,j,k;
+    char c,oneword[10];
+    set<int>::iterator v ;
+    fp1 = fopen("input.txt","r");
+    i=0;
+    j=0;
+    c = fscanf(fp1,"%s",oneword);
+    n=atoi(oneword);
+    m=n*n;
+   do
+    {
+    c = fscanf(fp1,"%s",oneword);
+    sud[i][j]=atoi(oneword);
+    j++;
+    if(j==m)
+    {
+        j=0;
+        i++;
+    }
+    } while (c != EOF);
+    int flag=1;
+   while(flag)
+    {
+    flag=0;
+    for(i=0;i<m;i++)
+    {
+        for(j=0;j<m;j++)
+        {
+            if(sud[i][j]==0)   //rule 1
+            {
+            row_check(i,j,(i/n)*n,(j/n)*n);
+            column_check(i,j,(i/n)*n,(j/n)*n);
+            grid_check((i/n)*n,(j/n)*n,i,j);
+            if(s[i][j].size()==1)
+            {
+             flag=1;
+             assign(i,j,(i/n)*n,(j/n)*n);
+             remove(i,j,(i/n)*n,(j/n)*n);
+            }
+            }
+            if((i+1)%n==0&&(j+1)%n==0)  ////rule 2:grid begins
+            {
+                int grid_val=(((i/n)*n)*n+(j/n)*n)/n;
+                 for(int k=0;k<m;k++)
+                {
+                    if(count[(k+1)][grid_val][2]==1)
+                    {
+                        flag=1;
+                        sud[loc1[(k+1)][grid_val][2]][loc2[(k+1)][grid_val][2]]=k+1;
+                        count[(k+1)][loc1[(k+1)][grid_val][2]][0]=0;
+                        count[(k+1)][loc2[(k+1)][grid_val][2]][1]=0;
+                         s[loc1[(k+1)][grid_val][2]][loc2[(k+1)][grid_val][2]].clear();
+                    }
+                }
+            }
+            if(i==m-1)//rule 2:col begins
+            {
+                for(int k=0;k<m;k++)
+                {
+                if(count[(k+1)][j][1]==1&& sud[loc1[(k+1)][j][1]][j]==0)
+                {
+                    flag=1;
+                         s[loc1[(k+1)][j][1]][j].clear();
+                    sud[loc1[(k+1)][j][1]][j]=k+1;
+                    count[(k+1)][loc1[(k+1)][j][1]][0]=0;
+                     count[(k+1)][loc2[(k+1)][j][2]][2]=0;
+                }
+             }
+            }
+        }
+        for(j=0;j<m;j++) ////rule 2:row begins
+        {
+           if(count[(j+1)][i][0]==1&& sud[i][loc1[(j+1)][i][0]]==0)
+           {
+
+               flag=1;
+               s[i][loc1[(j+1)][i][0]].clear();//printf("asas");
+           sud[i][loc1[(j+1)][i][0]]=j+1;
+           count[(j+1)][loc1[(j+1)][i][0]][1]=0;
+           count[(j+1)][loc2[(j+1)][i][0]][2]=0;
+        }
+      }
+    if(flag)
+    {
+        for(j=0;j<m;j++)
+        {
+        for(k=1;k<=m;k++)
+        {
+            count[k][j][0]=0;
+            count[k][j][1]=0;
+           count[k][j][2]=0;
+        }
+        }
+    }
+    }
+    }
+    for(i=0;i<m;i++)
+    {
+        for(j=0;j<m;j++)
+        {
+            if(sud[i][j]==0)
+                break;
+        }
+        if(j!=m)
+            break;
+    }
+   int g=back(i,j);
+    printresult(sud);
+    return 0;
+}
+
+void remove(int r,int c,int row,int col)
+{
+    for(int i=0;i<m;i++)
+    {
+        if(i!=c&&(s[r][i].find(sud[r][c]) != s[r][i].end()))
+        {
+        s[r][i].erase(sud[r][c]);
+
+        }
+        if(s[r][i].size()==1)
+            assign(r,i,row,col);
+    }
+        for(int i=0;i<m;i++)
+        {
+        if(i!=r&&(s[i][c].find(sud[r][c]) != s[i][c].end()))
+        {
+        s[i][c].erase(sud[r][c]);
+        }
+        if(s[i][c].size()==1)
+           assign(i,c,row,col);
+         }
+    for(int i=row;i<row+n;i++)
+    {
+        for(int j=col;j<col+n;j++)
+        {
+            if(i!=r&&j!=c&&(s[i][j].find(sud[r][c]) != s[i][j].end()))
+            {
+        s[i][j].erase(sud[r][c]);
+            }
+        if(s[i][j].size()==1)
+            assign(i,j,row,col);
+        }
+    }
+}
+void assign(int r,int c,int row,int col)
+{
+    set<int>::iterator v ;
+     v= s[r][c].begin();
+     if(sud[r][c]==0)
+        sud[r][c]=*v;
+        count[sud[r][c]][r][0]=0;
+        count[sud[r][c]][c][1]=0;
+        count[sud[r][c]][(row*n+col)/n][2]=0;
+        s[r][c].clear();
+}
+void row_check(int i1,int j1,int row,int col)
+{
+    int tem=(row*n+col)/n;
+    for(int i=0;i<m;i++)
+    {
+        s[i1][j1].insert(i+1);
+        if(count[(i+1)][i1][0]==0)
+        {
+                loc1[(i+1)][i1][0]=j1;
+                 loc2[(i+1)][i1][0]=tem;
+        }
+
+        if(count[(i+1)][j1][1]==0)
+            {
+                loc1[(i+1)][j1][1]=i1;
+                 loc2[(i+1)][j1][1]=tem;
+            }
+            if(count[(i+1)][tem][2]==0)
+             {
+                loc1[(i+1)][tem][2]=i1;
+                 loc2[(i+1)][tem][2]=j1;
+            }
+                count[(i+1)][i1][0]++;
+                count[(i+1)][j1][1]++;
+                count[(i+1)][tem][2]++;
+        vis[(i+1)][i1][0]=0;
+        vis[(i+1)][j1][1]=0;
+        vis[(i+1)][tem][2]=0;
+    }
+    for(int i=0;i<m;i++)
+        if(i!=j1&&(s[i1][j1].find(sud[i1][i]) != s[i1][j1].end()))
+        {
+        s[i1][j1].erase(sud[i1][i]);
+        if(count[sud[i1][i]][i1][0]>0)
+         {
+            count[sud[i1][i]][i1][0]--;
+            vis[sud[i1][i]][i1][0]=1;
+         }
+         if(count[sud[i1][i]][j1][1]>0)
+         {
+            count[sud[i1][i]][j1][1]--;
+            vis[sud[i1][i]][j1][1]=1;
+         }
+         if(count[sud[i1][i]][tem][2]>0)
+         {
+            count[sud[i1][i]][tem][2]--;
+            vis[sud[i1][i]][tem][2]=1;
+         }
+        }
+}
+void column_check(int i1,int j1,int row,int col)
+{int tem=(row*n+col)/n;
+    for(int i=0;i<m;i++)
+        if(i!=i1&&(s[i1][j1].find(sud[i][j1]) != s[i1][j1].end()))
+        {
+        s[i1][j1].erase(sud[i][j1]);
+        if(count[sud[i][j1]][i1][0]>0&&vis[sud[i][j1]][i1][0]==0)
+         {
+            count[sud[i][j1]][i1][0]--;
+            vis[sud[i][j1]][i1][0]=1;
+         }
+         if(count[sud[i][j1]][j1][1]>0&&vis[sud[i][j1]][j1][1]==0)
+         {
+            count[sud[i][j1]][j1][1]--;
+            vis[sud[i][j1]][j1][1]=1;
+         }
+         if(count[sud[i][j1]][tem][2]>0&&vis[sud[i][j1]][tem][2]==0)
+         {
+            count[sud[i][j1]][tem][2]--;
+            vis[sud[i][j1]][tem][2]=1;
+         }
+        }
+}
+void grid_check(int row,int col,int i1,int j1)
+{int tem=(row*n+col)/n;
+    for(int i=row;i<row+n;i++)
+    {
+        for(int j=col;j<col+n;j++)
+        if(i!=i1&&j!=j1&&(s[i1][j1].find(sud[i][j]) != s[i1][j1].end()))
+        {
+        s[i1][j1].erase(sud[i][j]);
+        if(count[sud[i][j]][i1][0]>0&&vis[sud[i][j]][i1][0]==0)
+          {
+             count[sud[i][j]][i1][0]--;
+             vis[sud[i][j]][i1][0]=1;
+          }
+           if(count[sud[i][j]][j1][1]>0&&vis[sud[i][j]][j1][1]==0)
+          {
+             count[sud[i][j]][j1][1]--;
+             vis[sud[i][j]][j1][1]=1;
+          }
+          if(count[sud[i][j]][tem][2]>0&&vis[sud[i][j]][tem][2]==0)
+          {
+             count[sud[i][j]][tem][2]--;
+             vis[sud[i][j]][tem][2]=1;
+          }
+        }
+    }
+}
+void printresult(int sud[][100])
+    {
+    for(int i=0;i<m;i++)
+    {
+        for(int j=0;j<m;j++)
+           printf(" %d |",sud[i][j]);
+       printf("\n\n");
+    }
+    }
+int back(int i,int j)
+{
+
+        if(j==m)
+        {
+            j=0;
+            i++;
+        }
+        if(i==m)
+            {
+            printresult(sud);
+            exit(0);
+            }
+            //flag=0;
+            int grid_val=(((i/n)*n)*n+(j/n)*n)/n;
+            if(sud[i][j]==0)
+            {
+                set<int>::iterator v1,v ;
+              for(v1=s[i][j].begin();v1!=s[i][j].end();++v1)
+              {
+                  if(count[*v1][i][0]!=0&&count[*v1][j][1]!=0&&count[*v1][grid_val][2]!=0)
+                  {
+                      int x,y,z;
+                      sud[i][j]=*v1;
+
+                      x=count[*v1][i][0];
+                      count[*v1][i][0]=0;
+                      y=count[*v1][j][1];
+                      count[*v1][j][1]=0;
+                      z=count[*v1][grid_val][2];
+                      count[*v1][grid_val][2]=0;
+                      //flag=1;
+                        if(back(i,j+1)==0)
+                        {
+
+                            sud[i][j]=0;
+                      count[*v1][i][0]=x;
+                      count[*v1][j][1]=y;
+                      count[*v1][grid_val][2]=z;
+                    //  flag=0;
+                        }
+
+                  }
+              }
+            }
+            else
+                return back(i,j+1);
+               return sud[i][j];
+}
